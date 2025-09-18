@@ -1,0 +1,118 @@
+# Ignore project-local directories
+/history/
+/example_wavs/
+/temp_audio/
+/vito_token.txt
+/vito_credentials.json
+/etc/
+
+# OS
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Editors/IDE
+.vscode/
+.idea/
+
+# Python bytecode and C extensions
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.pyd
+.Python
+
+# Distribution / packaging
+build/
+dist/
+downloads/
+eggs/
+.eggs/
+wheels/
+share/python-wheels/
+develop-eggs/
+sdist/
+lib/
+lib64/
+parts/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.spec
+
+# Logs
+*.log
+logs/
+
+# Unit test / coverage
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+junit.xml
+
+# Translations
+*.mo
+*.pot
+
+# Django
+db.sqlite3
+db.sqlite3-journal
+
+# Flask
+instance/
+.webassets-cache
+
+# Scrapy
+.scrapy
+
+# Sphinx documentation
+docs/_build/
+doc/_build/
+
+# PyBuilder
+target/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+
+# Environments
+.env
+.env.local
+.env.*.local
+.envrc
+.venv
+venv/
+ENV/
+env/
+env.bak/
+venv.bak/
+__pypackages__/
+
+# Type checkers / linters cache
+.mypy_cache/
+.pyre/
+.pytype/
+.ruff_cache/
+
+# Cython debug symbols
+cython_debug/
+
