@@ -1,10 +1,11 @@
 import os
+import sys
 from datetime import datetime
 import streamlit as st
-import streamlit.components.v1 as components
-import html
 from util.stt import VitoSTTClient
 from util.tts import TTSService
+from util.house import House, get_house_instance
+from util.launcher import should_launch_streamlit, launch_streamlit
 from main import (
     system_message,
     chat_with_gpt,
@@ -14,6 +15,10 @@ from main import (
     load_or_prompt_vito_credentials,
 )
 
+
+if should_launch_streamlit(sys.argv):
+    launch_streamlit(os.path.abspath(__file__), sys.argv)
+    raise SystemExit(0)
 
 st.set_page_config(page_title="Commetto - Chat", page_icon="🌟", layout="wide")
 
@@ -38,45 +43,24 @@ if "stt_client" not in st.session_state:
     st.session_state.stt_client = None
 if "last_message_count" not in st.session_state:
     st.session_state.last_message_count = 0
+if "house" not in st.session_state:
+    st.session_state.house = get_house_instance()
+else:
+    st.session_state.house = get_house_instance()
 
 col1, col2 = st.columns([3, 2], gap="large")
 
 with col1:
-    # 메시지 전용 스크롤 박스 렌더링 (system 제외)
-    items = []
-    for msg in st.session_state.messages[1:]:
-        role = msg.get("role")
-        content = msg.get("content")
-        if not content:
-            continue
-        if role not in ("user", "assistant"):
-            continue
-        safe = html.escape(str(content))
-        cls = "user" if role == "user" else "assistant"
-        items.append(f'<div class="msg {cls}"><div class="bubble">{safe}</div></div>')
+    chat_container = st.container(height=560)
+    with chat_container:
+        for msg in st.session_state.messages[1:]:
+            role = msg.get("role")
+            content = msg.get("content")
+            if not content or role not in ("user", "assistant"):
+                continue
+            with st.chat_message("user" if role == "user" else "assistant"):
+                st.markdown(str(content))
 
-    chat_html = """
-<style>
-.chat-box { height: 560px; overflow-y: auto; padding: 8px 0; }
-.msg { display: flex; margin: 6px 0; }
-.msg.user { justify-content: flex-end; }
-.msg.assistant { justify-content: flex-start; margin-bottom: 15px; }
-.bubble { max-width: 85%; padding: 10px 12px; border-radius: 12px; white-space: pre-wrap; word-break: break-word; }
-.msg.user .bubble { background: #DCF2FF; color: #000; }
-.msg.assistant .bubble { background: #F2F2F2; color: #000; }
-</style>
-<div id="chat-box" class="chat-box">{items}</div>
-<script>
-  try {
-    const box = document.getElementById('chat-box');
-    if (box) { box.scrollTop = box.scrollHeight; }
-  } catch (e) {}
-</script>
-""".replace("{items}", "".join(items))
-
-    components.html(chat_html, height=560, scrolling=False)
-
-    # 새 메시지 카운터 갱신 (자동 스크롤은 위 chat-box 스크립트가 처리)
     if st.session_state.last_message_count != len(st.session_state.messages):
         st.session_state.last_message_count = len(st.session_state.messages)
 
@@ -94,20 +78,19 @@ with col1:
         submitted = st.form_submit_button("보내기")
 
     if submitted and user_text.strip():
-        # 1) 사용자 메시지를 즉시 세션에 반영 (UI 즉시 업데이트)
         timestamp_str = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         st.session_state.messages.append({"role": "system", "content": f"현재 시각:{timestamp_str}"})
         st.session_state.messages.append({"role": "user", "content": user_text})
 
-        # 2) AI 응답 생성 (중복 방지: append_user=False)
         try:
-            reply = chat_with_gpt(
+            chat_with_gpt(
                 user_text,
                 st.session_state.messages,
                 tts=st.session_state.tts_service,
                 use_tts=st.session_state.use_tts,
                 append_user=False,
             )
+            st.session_state.house = get_house_instance()
         except Exception as e:
             st.error(f"응답 생성 실패: {e}")
         else:
@@ -123,18 +106,18 @@ with col1:
         if st.button("전사 텍스트로 보내기"):
             text_to_send = st.session_state.get("transcript_area", "").strip()
             if text_to_send:
-                # 사용자 메시지를 먼저 반영
                 timestamp_str = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
                 st.session_state.messages.append({"role": "system", "content": f"현재 시각:{timestamp_str}"})
                 st.session_state.messages.append({"role": "user", "content": text_to_send})
                 try:
-                    reply = chat_with_gpt(
+                    chat_with_gpt(
                         text_to_send,
                         st.session_state.messages,
                         tts=st.session_state.tts_service,
                         use_tts=st.session_state.use_tts,
                         append_user=False,
                     )
+                    st.session_state.house = get_house_instance()
                 except Exception as e:
                     st.error(f"응답 생성 실패: {e}")
                 else:
@@ -149,6 +132,54 @@ with col1:
     # 저장 버튼은 오른쪽 패널로 이동하여 입력창이 최하단 유지되도록 함
 
 with col2:
+    st.subheader("🏠 방 상태")
+    house = st.session_state.house
+    status = house.to_dict()
+
+    st.write(f"에어컨: {'켜짐' if status['aircon'] else '꺼짐'}")
+    st.write(f"난방: {'켜짐' if status['heater'] else '꺼짐'}")
+    st.write(f"TV: {'켜짐' if status['tv'] else '꺼짐'}")
+    st.write(f"온도: {status['temperature']}℃")
+    st.write(f"채널: {status['channel']}")
+    st.write(f"볼륨: {status['volume']}")
+    st.write(f"방 상태: {'깨끗함' if status['clean'] else '더러움'}")
+
+    st.divider()
+
+    col_a, col_b = st.columns(2)
+    with col_a:
+        if st.button("에어컨 켜기"):
+            house.turn_on_aircon()
+            st.rerun()
+        if st.button("에어컨 끄기"):
+            house.turn_off_aircon()
+            st.rerun()
+        if st.button("난방 켜기"):
+            house.turn_on_heater()
+            st.rerun()
+        if st.button("난방 끄기"):
+            house.turn_off_heater()
+            st.rerun()
+    with col_b:
+        if st.button("TV 켜기"):
+            house.turn_on_tv()
+            st.rerun()
+        if st.button("TV 끄기"):
+            house.turn_off_tv()
+            st.rerun()
+        if st.button("방 청소"):
+            house.clean_room()
+            st.rerun()
+        if st.button("방 더럽히기"):
+            house.make_dirty()
+            st.rerun()
+
+    st.divider()
+    temp_value = st.number_input("온도 설정", min_value=16, max_value=30, value=status["temperature"])
+    if st.button("온도 적용"):
+        house.set_temperature(int(temp_value))
+        st.rerun()
+
     st.subheader("설정")
 
     # VITO 자격증명 버튼
@@ -196,14 +227,11 @@ with col2:
     if st.session_state.use_stt:
         if st.button("🎙️ 말하기 (무음 2초로 종료)"):
             try:
-                # STT 클라이언트 준비
                 if st.session_state.stt_client is None:
                     cid, csec = load_or_prompt_vito_credentials()
                     st.session_state.stt_client = VitoSTTClient(client_id=cid, client_secret=csec)
-                # 토큰 최신화
                 st.session_state.stt_client.jwt_token = get_or_refresh_vito_token(st.session_state.stt_client)
 
-                # 녹음 → 파일 저장
                 wav_path = os.path.join("history", f"record_{__import__('datetime').datetime.now().strftime('%Y%m%d_%H%M%S')}.wav")
                 os.makedirs(os.path.dirname(wav_path), exist_ok=True)
 
@@ -213,7 +241,6 @@ with col2:
                         silence_seconds=2,
                     )
 
-                # 전사
                 with st.spinner("전사 중..."):
                     stt_json = st.session_state.stt_client.transcribe_file_and_wait(wav_path)
                     text = extract_transcript(stt_json)
@@ -221,13 +248,13 @@ with col2:
                 if not text.strip():
                     st.warning("전사된 텍스트가 비어있습니다.")
                 else:
-                    # 대화에 바로 전송 (전용 div가 렌더링)
-                    reply = chat_with_gpt(
+                    chat_with_gpt(
                         text,
                         st.session_state.messages,
                         tts=st.session_state.tts_service,
                         use_tts=st.session_state.use_tts,
                     )
+                    st.session_state.house = get_house_instance()
                     try:
                         if hasattr(st, "rerun"):
                             st.rerun()

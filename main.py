@@ -10,7 +10,7 @@ from util.stt import VitoSTTClient
 # ------------------------------
 # 기본 설정
 # ------------------------------
-GPT_MODEL = "gpt-4.1-nano"
+GPT_MODEL = "gpt-5.4-mini"
 client = OpenAI()
 # 현재 대화의 저장 파일 경로 (콘솔 모드 등 모듈 수명 내에서 유지)
 CURRENT_HISTORY_FILE: str | None = None
@@ -125,6 +125,122 @@ tools = [
                 },
                 "required": ["description"]
             }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_house_status",
+            "description": "현재 집의 전기/난방/TV/청소 상태를 확인합니다.",
+            "parameters": {"type": "object", "properties": {}}
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "turn_on_aircon",
+            "description": "에어컨을 켭니다.",
+            "parameters": {"type": "object", "properties": {}}
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "turn_off_aircon",
+            "description": "에어컨을 끕니다.",
+            "parameters": {"type": "object", "properties": {}}
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "set_temperature",
+            "description": "집의 온도를 설정합니다.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "temp": {"type": "integer", "description": "설정할 온도 (예: 24)"}
+                },
+                "required": ["temp"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "turn_on_heater",
+            "description": "난방을 켭니다.",
+            "parameters": {"type": "object", "properties": {}}
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "turn_off_heater",
+            "description": "난방을 끕니다.",
+            "parameters": {"type": "object", "properties": {}}
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "turn_on_tv",
+            "description": "TV를 켭니다.",
+            "parameters": {"type": "object", "properties": {}}
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "turn_off_tv",
+            "description": "TV를 끕니다.",
+            "parameters": {"type": "object", "properties": {}}
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "change_channel",
+            "description": "TV 채널을 변경합니다.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "channel": {"type": "integer", "description": "이동할 채널 번호"}
+                },
+                "required": ["channel"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "volume_up",
+            "description": "TV 볼륨을 올립니다.",
+            "parameters": {"type": "object", "properties": {}}
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "volume_down",
+            "description": "TV 볼륨을 내립니다.",
+            "parameters": {"type": "object", "properties": {}}
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "clean_room",
+            "description": "방을 청소합니다.",
+            "parameters": {"type": "object", "properties": {}}
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "make_dirty",
+            "description": "방을 더럽힙니다.",
+            "parameters": {"type": "object", "properties": {}}
         }
     },
 ]
@@ -372,9 +488,112 @@ def chat_with_gpt(user_input: str, messages: list, tts: Optional[TTSService] = N
                 try:
                     result = util.remember(description)
                 except Exception as e:
-                    # 함수 호출 실패 시에도 GPT가 맥락상 답변하도록 에러를 JSON으로 넘김
                     result = _json.dumps({"status": "error", "message": str(e) }, ensure_ascii=False)
 
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": tc.get("id"),
+                    "content": result
+                })
+
+            elif func_name == "get_house_status":
+                result = util.get_house_status()
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": tc.get("id"),
+                    "content": result
+                })
+
+            elif func_name == "turn_on_aircon":
+                result = util.turn_on_aircon()
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": tc.get("id"),
+                    "content": result
+                })
+
+            elif func_name == "turn_off_aircon":
+                result = util.turn_off_aircon()
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": tc.get("id"),
+                    "content": result
+                })
+
+            elif func_name == "set_temperature":
+                result = util.set_temperature(parsed_args.get("temp"))
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": tc.get("id"),
+                    "content": result
+                })
+
+            elif func_name == "turn_on_heater":
+                result = util.turn_on_heater()
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": tc.get("id"),
+                    "content": result
+                })
+
+            elif func_name == "turn_off_heater":
+                result = util.turn_off_heater()
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": tc.get("id"),
+                    "content": result
+                })
+
+            elif func_name == "turn_on_tv":
+                result = util.turn_on_tv()
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": tc.get("id"),
+                    "content": result
+                })
+
+            elif func_name == "turn_off_tv":
+                result = util.turn_off_tv()
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": tc.get("id"),
+                    "content": result
+                })
+
+            elif func_name == "change_channel":
+                result = util.change_channel(parsed_args.get("channel"))
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": tc.get("id"),
+                    "content": result
+                })
+
+            elif func_name == "volume_up":
+                result = util.volume_up()
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": tc.get("id"),
+                    "content": result
+                })
+
+            elif func_name == "volume_down":
+                result = util.volume_down()
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": tc.get("id"),
+                    "content": result
+                })
+
+            elif func_name == "clean_room":
+                result = util.clean_room()
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": tc.get("id"),
+                    "content": result
+                })
+
+            elif func_name == "make_dirty":
+                result = util.make_dirty()
                 messages.append({
                     "role": "tool",
                     "tool_call_id": tc.get("id"),
